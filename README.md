@@ -1,0 +1,2 @@
+DrDeals Bot is a Telegram bot that finds and shares curated AliExpress deals using the AliExpress Open Platform and Affiliate APIs.
+It allows users to search for products and receive a visual collage with prices, ratings, and affiliate tracking links.
