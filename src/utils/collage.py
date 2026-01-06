@@ -29,8 +29,8 @@ def create_collage(image_urls: list[str], session: requests.Session) -> io.Bytes
 
     draw = ImageDraw.Draw(canvas)
 
-    # ---- FONT (Windows-safe) ----
-    font_path = r"C:\Windows\Fonts\arialbd.ttf"  # bold Arial
+    # ---- FONT (Windows-safe bold) ----
+    font_path = r"C:\Windows\Fonts\arialbd.ttf"
     try:
         font = ImageFont.truetype(font_path, 60)
         log.info("Loaded font: %s", font_path)
@@ -42,20 +42,33 @@ def create_collage(image_urls: list[str], session: requests.Session) -> io.Bytes
     positions = [(30, 30), (530, 30), (30, 530), (530, 530)]
 
     for i, (x, y) in enumerate(positions):
-        # yellow badge
+        shadow_offset = 6
+
+        # shadow
         draw.ellipse(
-            (x, y, x + 90, y + 90),
-            fill="#FFD700",
-            outline="black",
-            width=3,
+            (
+                x + shadow_offset,
+                y + shadow_offset,
+                x + 100 + shadow_offset,
+                y + 100 + shadow_offset,
+            ),
+            fill="#000000"
+        )
+
+        # main badge
+        draw.ellipse(
+            (x, y, x + 100, y + 100),
+            fill="#111111",
+            outline="white",
+            width=4
         )
 
         # number
         draw.text(
-            (x + 32, y + 18),
+            (x + 36, y + 18),
             str(i + 1),
-            fill="black",
-            font=font,
+            fill="white",
+            font=font
         )
 
     out = io.BytesIO()

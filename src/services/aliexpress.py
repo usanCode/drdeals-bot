@@ -64,7 +64,9 @@ class AliExpressClient:
     def generate_link(self, url: str) -> str:
         if not url:
             return ""
-        clean = url.split("?")[0]
+
+        source = url.strip()
+
         params = {
             "app_key": self.app_key,
             "method": "aliexpress.affiliate.link.generate",
@@ -74,7 +76,7 @@ class AliExpressClient:
             "v": "2.0",
             "partner_id": "top-autopilot",
             "promotion_link_type": "0",
-            "source_values": clean,
+            "source_values": source,
             "tracking_id": self.tracking_id,
         }
         params["sign"] = self._sign(params)
@@ -83,8 +85,10 @@ class AliExpressClient:
             r = self.session.post(ALI_ENDPOINT, data=params, timeout=8).json()
             res = r["aliexpress_affiliate_link_generate_response"]["resp_result"]["result"]
             link = res["promotion_links"]["promotion_link"][0]
+
+            # Prefer SHORT s.click first
             final = link.get("promotion_short_link") or link.get("promotion_link")
-            return final or clean
+            return final or source
         except Exception as e:
             log.warning("Link generate failed: %s", e)
-            return clean
+            return source

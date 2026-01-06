@@ -76,7 +76,8 @@ def register_handlers(bot: TeleBot, ali: AliExpressClient, page_size: int, min_s
 
                 text += f"{i+1}. 🥇 {title_clean}\n"
                 text += f"💰 מחיר: {price}₪ | ⭐ {rating} | 🛒 {orders}\n"
-                text += f"{link}\n\n"
+                safe_link = link.replace("_", r"\_")
+                text += f"{safe_link}\n\n"
                 kb.add(types.InlineKeyboardButton(f"מוצר {i+1}", url=link))
 
             bot.delete_message(m.chat.id, msg.message_id)
@@ -85,6 +86,7 @@ def register_handlers(bot: TeleBot, ali: AliExpressClient, page_size: int, min_s
                 try:
                     collage = create_collage(images, session=ali.session)
                     bot.send_photo(m.chat.id, collage, caption=text, parse_mode="Markdown", reply_markup=kb)
+                    
                     return
                 except Exception as e:
                     log.warning("Collage send failed: %s", e)
