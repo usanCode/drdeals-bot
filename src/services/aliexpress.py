@@ -9,6 +9,7 @@ log = logging.getLogger(__name__)
 
 ALI_ENDPOINT = "https://api-sg.aliexpress.com/sync"
 
+
 class AliExpressClient:
     def __init__(self, app_key: str, app_secret: str, tracking_id: str, ship_to_country: str, target_currency: str):
         self.app_key = app_key
@@ -61,12 +62,7 @@ class AliExpressClient:
         except Exception:
             return []
 
-    def generate_link(self, url: str) -> str:
-        if not url:
-            return ""
-
-        source = url.strip()
-
+    def _call_link_generate(self, source: str) -> dict:
         params = {
             "app_key": self.app_key,
             "method": "aliexpress.affiliate.link.generate",
@@ -80,15 +76,56 @@ class AliExpressClient:
             "tracking_id": self.tracking_id,
         }
         params["sign"] = self._sign(params)
+        return self.session.post(ALI_ENDPOINT, data=params, timeout=8).json()
 
-        try:
-            r = self.session.post(ALI_ENDPOINT, data=params, timeout=8).json()
-            res = r["aliexpress_affiliate_link_generate_response"]["resp_result"]["result"]
-            link = res["promotion_links"]["promotion_link"][0]
+    def generate_link(self, url: str) -> str:
+        if not url:
+            return ""
 
-            # Prefer SHORT s.click first
-            final = link.get("promotion_short_link") or link.get("promotion_link")
-            return final or source
-        except Exception as e:
-            log.warning("Link generate failed: %s", e)
-            return source
+        source = url.strip()
+
+        # Retry loop for ApiCallLimit
+        for attempt in range(1, 4):  # 3 attempts
+            try:
+                data = self._call_link_generate(source)
+
+                if "error_response" in data:
+                    err = data.get("error_response", {})
+                    code = err.get("code")
+                    msg = err.get("msg", "")
+
+                    if code == "ApiCallLimit":
+                        # Increasing wait each attempt
+                        wait = 1.7 if attempt == 1 else (2.2 if attempt == 2 else 2.8)
+                        log.warning(
+                            "Link.generate rate limited (attempt %s), sleeping %ss. msg=%s source=%s",
+                            attempt, wait, msg, source
+                        )
+                        time.sleep(wait)
+                        continue
+
+                    log.warning("Link.generate error code=%s msg=%s source=%s body=%s", code, msg, source, data)
+                    return ""
+
+                resp = data.get("aliexpress_affiliate_link_generate_response")
+                if not resp:
+                    log.warning("Link.generate unexpected response keys=%s source=%s body=%s", list(data.keys()), source, data)
+                    return ""
+
+                resp_result = resp.get("resp_result", {})
+                result = resp_result.get("result") or {}
+                promo_links = (result.get("promotion_links") or {}).get("promotion_link") or []
+                if not promo_links:
+                    log.warning("Link.generate no promotion_link source=%s result=%s", source, result)
+                    return ""
+
+                link = promo_links[0]
+                final = link.get("promotion_short_link") or link.get("promotion_link") or ""
+                return final
+
+            except Exception as e:
+                log.warning("Link generate failed attempt %s for %s: %s", attempt, source, e)
+                time.sleep(0.6)
+
+        # After retries, give up (no non-affiliate fallback)
+        return ""
