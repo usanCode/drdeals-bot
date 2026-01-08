@@ -142,7 +142,7 @@ def register_handlers(
         try:
             msg = bot.reply_to(m, f"🔎 קיבלתי: '{query_he}'.\n📡 מתחבר לשרתים...")
             bot.send_chat_action(m.chat.id, "typing")
-            time.sleep(1.2)
+            time.sleep(1.0)
 
             # Color enrichment
             color_en = ""
@@ -223,10 +223,10 @@ def register_handlers(
             for p in candidates:
                 elapsed = time.time() - progress_start
 
-                if progress_stage == 0 and elapsed >= 1.0:
+                if progress_stage == 0 and elapsed >= 1.5:
                     bot.edit_message_text("⏳ עוד רגע והכול מוכן ✨", m.chat.id, msg.message_id)
                     progress_stage = 1
-                elif progress_stage == 1 and elapsed >= 4.0:
+                elif progress_stage == 1 and elapsed >= 3.0:
                     bot.edit_message_text("🧠 כמעט שם... בוחר את הטובים ביותר עבורך", m.chat.id, msg.message_id)
                     progress_stage = 2
 
