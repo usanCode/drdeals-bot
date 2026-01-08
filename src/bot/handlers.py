@@ -1,5 +1,6 @@
-import logging
+﻿import logging
 import time
+import re
 import json
 from datetime import datetime
 from pathlib import Path
@@ -20,14 +21,15 @@ BOT_LOG_PATH = LOGS_DIR / "drdeals_bot_activity.log"
 
 
 def log_bot_event(event: dict) -> None:
-    """Append one JSON line to the bot activity log."""
+    """Write one JSON line to the activity logger (daily rolling)."""
     try:
+        # keep ts inside JSON too, useful for downstream parsing
         event["ts"] = datetime.utcnow().isoformat() + "Z"
-        with open(BOT_LOG_PATH, "a", encoding="utf-8") as f:
-            f.write(json.dumps(event, ensure_ascii=False) + "\n")
+        activity_log = logging.getLogger("activity")
+        activity_log.info(json.dumps(event, ensure_ascii=False))
     except Exception as e:
-        # don't break the bot if logging fails
         log.warning("Failed writing bot activity log: %s", e)
+
 
 
 def rating_to_stars(raw_rating) -> str:
@@ -48,6 +50,22 @@ def rating_to_stars(raw_rating) -> str:
 
     except (ValueError, TypeError):
         return "?"
+
+
+def enhance_query(base_en: str, query_he: str) -> str:
+    q_all = f"{base_en} {query_he}".lower()
+
+    # Mini PC intent (Hebrew or English)
+    if any(k in q_all for k in ["mini pc", "minipc", "מיני מחשב", "מחשב קטן", "מחשב נייח"]):
+        # Force marketplace search toward actual computers, not "mini accessories for PC"
+        return "mini pc desktop computer intel amd windows"
+        
+        # Boots (מגפיים)
+    if "מגפיים" in q_all or "boots" in q_all or "boot" in q_all:
+        # push marketplace toward actual boots, not socks/covers
+        return "boots ankle boots winter boots chelsea boots"
+
+    return base_en
 
 
 def register_handlers(
@@ -118,7 +136,25 @@ def register_handlers(
                     break
 
             # Translate query
-            base_en = safe_translate(query_he, "en")
+
+            def clean_hebrew_filler(q: str) -> str:
+                # common “noise” words that hurt search
+                fillers = ["לי", "בשבילי", "עבורי", "בבקשה", "תביא לי", "תמצא לי", "חפש לי"]
+                out = q
+                for f in fillers:
+                    out = out.replace(f, " ")
+                out = re.sub(r"\s+", " ", out).strip()
+                return out
+
+            q_clean = clean_hebrew_filler(query_he)
+
+            # If the user already typed English keywords (mini pc, ram, ssd, brands),
+            # do NOT translate, just use it as-is.
+            if re.search(r"[a-zA-Z]", q_clean):
+                base_en = q_clean
+            else:
+                base_en = safe_translate(q_clean, "en")
+
 
             # Small heuristic enrichment
             extra = "Fashion Elegant" if "מעיל" in query_he else ""
@@ -126,6 +162,9 @@ def register_handlers(
             final_query = f"{base_en} {color_en} {extra}".strip()
 
             bot.edit_message_text(f"📥 מחפש: {base_en}...", m.chat.id, msg.message_id)
+
+            enhanced_base = enhance_query(base_en, query_he)
+            final_query = f"{enhanced_base} {color_en} {extra}".strip()
 
             products = ali.product_query(
                 final_query,
@@ -146,6 +185,9 @@ def register_handlers(
                     "chat_id": m.chat.id,
                     "user_id": getattr(user, "id", None),
                     "candidates_count": len(products) if products else 0,
+                    "final_query": final_query,
+                    "base_en": base_en,
+
                 })
 
                 bot.edit_message_text("🛑 לא מצאתי תוצאות טובות אחרי סינון.", m.chat.id, msg.message_id)
