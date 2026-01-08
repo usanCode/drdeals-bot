@@ -4,6 +4,8 @@ import re
 import json
 from datetime import datetime
 from pathlib import Path
+import unicodedata
+
 
 from telebot import TeleBot, types
 
@@ -18,6 +20,16 @@ log = logging.getLogger(__name__)
 LOGS_DIR = Path(__file__).resolve().parent.parent / "logs"
 LOGS_DIR.mkdir(exist_ok=True)
 BOT_LOG_PATH = LOGS_DIR / "drdeals_bot_activity.log"
+
+
+_INVISIBLES = dict.fromkeys(map(ord, "\u200e\u200f\u202a\u202b\u202c\ufeff"), None)
+
+def normalize_text(s: str) -> str:
+    s = unicodedata.normalize("NFKC", s or "")
+    s = s.translate(_INVISIBLES)
+    s = s.replace("\n", " ").replace("\t", " ")
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
 
 
 def log_bot_event(event: dict) -> None:
@@ -93,7 +105,8 @@ def register_handlers(
         if not getattr(m, "text", None):
             return
 
-        text_in = m.text.strip()
+        text_in = normalize_text(m.text)
+
 
         # Handle "/start" and "/start@BotName" that might come through here
         if text_in.startswith("/start"):
@@ -101,11 +114,14 @@ def register_handlers(
             return
 
         # NEW: If user writes anything else (like "היי"), show instructions
-        if not text_in.startswith("חפש לי"):
+        m_search = re.match(r'^חפש לי\s+(.+?)\s*[.?!״"\':;]*$', text_in)
+
+        if not m_search:
             send_welcome(m.chat.id)
             return
 
-        query_he = text_in.replace("חפש לי", "").strip()
+        query_he = m_search.group(1).strip()
+
         if not query_he:
             send_welcome(m.chat.id)
             return
