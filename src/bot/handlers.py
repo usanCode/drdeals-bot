@@ -86,19 +86,48 @@ def register_handlers(
     page_size: int,
     min_sale_price: int,
 ) -> None:
+    # User preferences: dict of user_id -> {"country": str, "currency": str}
+    user_prefs = {}
+
     def send_welcome(chat_id: int) -> None:
         bot.send_message(
             chat_id,
-            '👋 שלום!\n\n'
-            'להתחלת החיפוש כתבו:\n'
-            'חפש לי <הפריט שתרצו לחפש>\n\n'
-            'לדוגמה:\n'
-            'חפש לי אוזניות אלחוטיות'
+            '👋 Hello!\n\n'
+            'To start searching, type:\n'
+            'search for <item you want>\n\n'
+            'Example:\n'
+            'search for wireless headphones\n\n'
+            'Use /setcountry <country code> to set shipping country (e.g., /setcountry US)\n'
+            'Use /setcurrency <currency> to set currency (e.g., /setcurrency USD)'
         )
 
     @bot.message_handler(commands=["start"])
     def start_handler(m):
         send_welcome(m.chat.id)
+
+    @bot.message_handler(commands=["setcountry"])
+    def set_country_handler(m):
+        user_id = m.from_user.id
+        args = m.text.split()
+        if len(args) < 2:
+            bot.reply_to(m, "Usage: /setcountry <country code> (e.g., US, IL, DE)")
+            return
+        country = args[1].upper()
+        user_prefs[user_id] = user_prefs.get(user_id, {})
+        user_prefs[user_id]["country"] = country
+        bot.reply_to(m, f"Shipping country set to {country}")
+
+    @bot.message_handler(commands=["setcurrency"])
+    def set_currency_handler(m):
+        user_id = m.from_user.id
+        args = m.text.split()
+        if len(args) < 2:
+            bot.reply_to(m, "Usage: /setcurrency <currency> (e.g., USD, ILS, EUR)")
+            return
+        currency = args[1].upper()
+        user_prefs[user_id] = user_prefs.get(user_id, {})
+        user_prefs[user_id]["currency"] = currency
+        bot.reply_to(m, f"Currency set to {currency}")
 
     @bot.message_handler(func=lambda m: True)
     def handler(m):
@@ -107,47 +136,63 @@ def register_handlers(
 
         text_in = normalize_text(m.text)
 
-
         # Handle "/start" and "/start@BotName" that might come through here
         if text_in.startswith("/start"):
             send_welcome(m.chat.id)
             return
 
-        # NEW: If user writes anything else (like "היי"), show instructions
-        m_search = re.match(r'^חפש לי\s+(.+?)\s*[.?!״"\':;]*$', text_in)
+        # Match "search for <query>"
+        m_search = re.match(r'^search for\s+(.+?)\s*[.?!״"\':;]*$', text_in, re.IGNORECASE)
 
         if not m_search:
             send_welcome(m.chat.id)
             return
 
-        query_he = m_search.group(1).strip()
+        query_en = m_search.group(1).strip()
 
-        if not query_he:
+        if not query_en:
             send_welcome(m.chat.id)
             return
 
         user = getattr(m, "from_user", None)
+        user_id = getattr(user, "id", None)
+
+        # Get user preferences, default to global settings
+        prefs = user_prefs.get(user_id, {})
+        ship_to_country = prefs.get("country", ali.ship_to_country)
+        target_currency = prefs.get("currency", ali.target_currency)
 
         # Log the search event
         log_bot_event({
             "type": "search",
-            "query": query_he,
-            "chat_id": getattr(m.chat, "id", None),
-            "user_id": getattr(user, "id", None),
+            "query": query_en,
+            "chat_id": getattr(m.chat.id, "id", None),
+            "user_id": user_id,
             "username": getattr(user, "username", None),
             "first_name": getattr(user, "first_name", None),
             "last_name": getattr(user, "last_name", None),
+            "ship_to_country": ship_to_country,
+            "target_currency": target_currency,
         })
 
         try:
-            msg = bot.reply_to(m, f"🔎 קיבלתי: '{query_he}'.\n📡 מתחבר לשרתים...")
+            msg = bot.reply_to(m, f"🔎 Received: '{query_en}'.\n📡 Connecting to servers...")
             bot.send_chat_action(m.chat.id, "typing")
             time.sleep(1.0)
 
-            # Color enrichment
+            # Create a client with user-specific settings
+            user_ali = AliExpressClient(
+                app_key=ali.app_key,
+                app_secret=ali.app_secret,
+                tracking_id=ali.tracking_id,
+                ship_to_country=ship_to_country,
+                target_currency=target_currency
+            )
+
+            # Color enrichment (assuming query is in English now)
             color_en = ""
             for h, e in COLORS.items():
-                if h in query_he:
+                if h in query_en:
                     color_en = e
                     break
 
