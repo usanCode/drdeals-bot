@@ -154,6 +154,8 @@ def register_handlers(
             send_welcome(m.chat.id)
             return
 
+        query_he = query_en  # Assuming query is in Hebrew initially
+
         user = getattr(m, "from_user", None)
         user_id = getattr(user, "id", None)
 
@@ -222,7 +224,7 @@ def register_handlers(
 
             final_query = f"{base_en} {color_en} {extra}".strip()
 
-            bot.edit_message_text(f"📥 מחפש: {base_en}...", m.chat.id, msg.message_id)
+            bot.edit_message_text(f"📥 Searching: {base_en}...", m.chat.id, msg.message_id)
 
             enhanced_base = enhance_query(base_en, query_he)
             final_query = f"{enhanced_base} {color_en} {extra}".strip()
@@ -234,7 +236,7 @@ def register_handlers(
             )
 
             # Filtering stage (make it visible, not a flash)
-            bot.edit_message_text("🧹 מסנן תוצאות...", m.chat.id, msg.message_id)
+            bot.edit_message_text("🧹 Filtering results...", m.chat.id, msg.message_id)
             time.sleep(1.0)
 
             valid_products = [p for p in products if is_valid_product(p, query_he)]
@@ -251,11 +253,11 @@ def register_handlers(
 
                 })
 
-                bot.edit_message_text("🛑 לא מצאתי תוצאות טובות אחרי סינון.", m.chat.id, msg.message_id)
+                bot.edit_message_text("🛑 No good results found after filtering.", m.chat.id, msg.message_id)
                 return
 
             # Link generation stage
-            bot.edit_message_text("✍️ מכין קישורים...", m.chat.id, msg.message_id)
+            bot.edit_message_text("✍️ Preparing links...", m.chat.id, msg.message_id)
 
             max_items = 4
             candidates = valid_products[:25]
@@ -269,10 +271,10 @@ def register_handlers(
                 elapsed = time.time() - progress_start
 
                 if progress_stage == 0 and elapsed >= 1.5:
-                    bot.edit_message_text("⏳ עוד רגע והכול מוכן ✨", m.chat.id, msg.message_id)
+                    bot.edit_message_text("⏳ Almost ready ✨", m.chat.id, msg.message_id)
                     progress_stage = 1
                 elif progress_stage == 1 and elapsed >= 3.0:
-                    bot.edit_message_text("🧠 כמעט שם... בוחר את הטובים ביותר עבורך", m.chat.id, msg.message_id)
+                    bot.edit_message_text("🧠 Almost there... selecting the best for you", m.chat.id, msg.message_id)
                     progress_stage = 2
 
                 short_link = p.get("promotion_short_link")
@@ -323,7 +325,7 @@ def register_handlers(
                     time.sleep(1.0)
 
                 bot.delete_message(m.chat.id, msg.message_id)
-                bot.send_message(m.chat.id, "🛑 לא הצלחתי לייצר קישורי אפיליאייט כרגע. נסי שוב עוד רגע.")
+                bot.send_message(m.chat.id, "🛑 I was unable to generate affiliate links at this time. Please try again later.")
                 return
 
             # If we showed progress messages, leave them visible briefly before results
@@ -331,7 +333,7 @@ def register_handlers(
                 time.sleep(1.0)
 
             images: list[str] = []
-            text = "🛍️ הבחירות המובילות עבורך:\n\n"
+            text = "🛍️ Top choices for you:\n\n"
             kb = types.InlineKeyboardMarkup()
 
             for i, (p, link) in enumerate(picked):
@@ -345,18 +347,18 @@ def register_handlers(
                 if img_url:
                     images.append(img_url)
 
-                title_he = safe_translate(title_raw, "iw")
-                title_clean = " ".join(title_he.split()[:9])
+                title_en = safe_translate(title_raw, "en")
+                title_clean = " ".join(title_en.split()[:9])
 
                 text += f"{i+1}. 🥇 {title_clean}\n"
 
-                line = f"💰 מחיר: {price}₪ | ⭐ {rating}"
+                line = f"💰 Price: {price}₪ | ⭐ {rating}"
                 if orders is not None and str(orders).strip() != "":
                     line += f" | 🛒 {orders}"
                 text += line + "\n"
 
                 text += f"{link}\n\n"
-                kb.add(types.InlineKeyboardButton(f"מוצר {i+1}", url=link))
+                kb.add(types.InlineKeyboardButton(f"Product {i+1}", url=link))
 
             bot.delete_message(m.chat.id, msg.message_id)
 
@@ -383,6 +385,6 @@ def register_handlers(
         except Exception as e:
             log.exception("Handler error: %s", e)
             try:
-                bot.send_message(m.chat.id, "שגיאה זמנית.")
+                bot.send_message(m.chat.id, "Temporary error.")
             except Exception:
                 pass
