@@ -92,13 +92,14 @@ def register_handlers(
     def send_welcome(chat_id: int) -> None:
         bot.send_message(
             chat_id,
-            '👋 Hello!\n\n'
-            'To start searching, type:\n'
-            'search for <item you want>\n\n'
+            '👋 Welcome!\n\n'
+            'This bot is your shopping assistant 🤖. I help you discover products on AliExpress and provide easy links so you can view or buy them.\n\n'
+            'To search for something, simply type:\n'
+            'search for <item>\n\n'
             'Example:\n'
-            'search for wireless headphones\n\n'
-            'Use /setcountry <country code> to set shipping country (e.g., /setcountry US)\n'
-            'Use /setcurrency <currency> to set currency (e.g., /setcurrency USD)'
+            'search for laptop\n\n'
+            'I\'ll find some products for you and send the links.\n\n'
+            '⚠️ Note: This bot is an independent tool and is not affiliated with or endorsed by AliExpress.'
         )
 
     @bot.message_handler(commands=["start"])
