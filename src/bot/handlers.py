@@ -101,9 +101,9 @@ def register_handlers(
             '✅ Use this format:\n'
             'search for [product] + [brand] + [details]\n'
             '💡 Examples:\n'
-            '- search for hp laptop computer\n'
-            '- search for gaming laptop dell i7 16gb ram\n'
-            '- search for Business HP EliteBook 630 G11 laptop\n\n'
+            '- search for computer  hp laptop computer\n'
+            '- search for computer gaming laptop dell i7 16gb ram\n'
+            '- search for computer Business HP EliteBook 630 G11 laptop\n\n'
             '🚀 The more details you add, the better and more accurate your results will be.\n\n'
             '⚠️ Note: This bot is an independent tool and is not affiliated with or endorsed by AliExpress.'
         )
