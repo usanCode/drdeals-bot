@@ -93,12 +93,18 @@ def register_handlers(
         bot.send_message(
             chat_id,
             '👋 Welcome!\n\n'
-            'This bot is your shopping assistant 🤖. I help you discover products on AliExpress and provide easy links so you can view or buy them.\n\n'
+            'This bot is your shopping assistant 🤖. I help you discover products on AliExpress and provide easy links so you can view or buy them. I\'ll find some products for you and send the links.\n\n'
             'To search for something, simply type:\n'
             'search for <item>\n\n'
-            'Example:\n'
-            'search for laptop\n\n'
-            'I\'ll find some products for you and send the links.\n\n'
+            '🔍 How to search effectively:\n\n'
+            'For better results, be specific in your search.\n\n'
+            '✅ Use this format:\n'
+            'search for [product] + [brand] + [details]\n'
+            '💡 Examples:\n'
+            '- search for hp laptop computer\n'
+            '- search for gaming laptop dell i7 16gb ram\n'
+            '- search for Business HP EliteBook 630 G11 laptop\n\n'
+            '🚀 The more details you add, the better and more accurate your results will be.\n\n'
             '⚠️ Note: This bot is an independent tool and is not affiliated with or endorsed by AliExpress.'
         )
 
